@@ -6,9 +6,18 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"strings"
 )
+
+var debug bool = true
+
+func debugf(format string, args ...interface{}) {
+	if debug {
+		log.Printf("DEBUG "+format, args)
+	}
+}
 
 func readResponse(resp *http.Response) string {
 	reader := getReader(resp)
