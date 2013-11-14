@@ -1,77 +1,58 @@
 package scrapegoat
 
 import (
-	"net/http"
+	"github.com/PuerkitoBio/goquery"
 )
 
 type Spider struct {
-	Name      string
-	c         chan string // returns responses on this channel
-	urlQueue  chan *urlRequest
-	consumers []*consumer
+	Name          string
+	ItemProcessor func(*goquery.Document) Item
+	results       chan *Response // returns responses on this channel
+	urlQueue      chan *urlRequest
+	workers       []*worker
 }
 
 type urlRequest struct {
-	action string
-	url    string // fetch this url
+	url string // fetch this url
 }
 
-func (s *Spider) newConsumer() *consumer {
-	consumer := &consumer{}
-	consumer.spider = s
-	consumer.client = &http.Client{}
-	consumer.c = make(chan *http.Response)
-	return consumer
-}
-
-func NewSpider(name string, c chan string) *Spider {
+func NewSpider(name string, results chan *Response) *Spider {
 	spider := &Spider{}
 	spider.Name = name
-	spider.c = c
+	spider.results = results
 	spider.SetConcurrency(2)
-	spider.SetBufferSize(100)
-//	debugf("Created spider %s", name)
+	spider.SetQueueSize(100)
+	//	debugf("Created spider %s", name)
 	return spider
 }
 
 func (s *Spider) Concurrency() int {
-	return len(s.consumers)
+	return len(s.workers)
 }
 
 func (s *Spider) SetConcurrency(c int) {
-	s.consumers = make([]*consumer, c)
-	for i, _ := range s.consumers {
-		s.consumers[i] = s.newConsumer()
+	s.workers = make([]*worker, c)
+	for i, _ := range s.workers {
+		s.workers[i] = s.newWorker()
 	}
 }
-func (s *Spider) SetBufferSize(b int) {
+func (s *Spider) SetQueueSize(b int) {
 	s.urlQueue = make(chan *urlRequest, b)
 }
 
 func (s *Spider) EnqueueURL(url string) {
-	req := &urlRequest{"fetch", url}
+	req := &urlRequest{url}
 	s.urlQueue <- req
 }
 
 func (s *Spider) Start() {
-	go s.startConsumers()
-}
-
-func (s *Spider) startConsumers() {
-	for _, consumer := range s.consumers {
-		go consumer.start()
+	for _, worker := range s.workers {
+		worker.start()
 	}
 }
 
 func (s *Spider) Stop() {
-	s.urlQueue <- &urlRequest{"close", ""}
-}
-
-func (s *Spider) requestsPending() bool {
-	for _, consumer := range s.consumers {
-		if consumer.requestPending {
-			return true
-		}
+	for _, worker := range s.workers {
+		worker.stop()
 	}
-	return false
 }
