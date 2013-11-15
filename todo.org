@@ -1,0 +1,7 @@
+
+* Scrapegoat TODO
+** Return errors in Response
+** Add Document wrapper around goquery and xpath
+** Add ability to define custom request headers
+** Add ability to easily define User-Agent per spider
+** Add ability to send POST requests

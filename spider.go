@@ -1,19 +1,13 @@
 package scrapegoat
 
-import (
-	"github.com/PuerkitoBio/goquery"
-)
+import ()
 
 type Spider struct {
 	Name          string
-	ItemProcessor func(*goquery.Document) Item
+	NewItem       func() Item
 	results       chan *Response // returns responses on this channel
-	urlQueue      chan *urlRequest
+	urlQueue      chan *Request
 	workers       []*worker
-}
-
-type urlRequest struct {
-	url string // fetch this url
 }
 
 func NewSpider(name string, results chan *Response) *Spider {
@@ -37,11 +31,11 @@ func (s *Spider) SetConcurrency(c int) {
 	}
 }
 func (s *Spider) SetQueueSize(b int) {
-	s.urlQueue = make(chan *urlRequest, b)
+	s.urlQueue = make(chan *Request, b)
 }
 
 func (s *Spider) EnqueueURL(url string) {
-	req := &urlRequest{url}
+	req := &Request{url}
 	s.urlQueue <- req
 }
 

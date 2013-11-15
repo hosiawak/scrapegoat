@@ -2,7 +2,6 @@ package scrapegoat
 
 import (
 	"fmt"
-	"github.com/PuerkitoBio/goquery"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -10,8 +9,19 @@ import (
 )
 
 type post struct {
-	name  string
+	site, name, url  string
 	price int
+}
+
+func newPost() Item {
+	return &post{site: "amazon.com"}
+}
+
+func (p *post) Process(doc *Document, resp *Response) Item {
+	p.name = doc.CSS("a").Text()
+	p.url = "amazon.com/something"
+	p.price, _ = strconv.Atoi(doc.CSS("span.price").Text())
+	return p
 }
 
 func TestNewSpider(t *testing.T) {
@@ -34,22 +44,18 @@ func TestSetConcurrency(t *testing.T) {
 	}
 }
 
-func TestEnqueueURL(t *testing.T) {
+func TestResponse(t *testing.T) {
 	// test server
+	body := "<a>Hello</a><span class=price>2</span>"
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "<a>Hello</a><span class=price>2</span>")
+		fmt.Fprint(w, body)
 	}))
 	defer ts.Close()
 
 	// start a spider
 	results := make(chan *Response)
 	spider := NewSpider("spider.com", results)
-	spider.ItemProcessor = func(doc *goquery.Document) Item {
-		post := &post{}
-		post.name = doc.Find("a").Text()
-		post.price, _ = strconv.Atoi(doc.Find("span.price").Text())
-		return post
-	}
+	spider.NewItem = newPost
 	spider.Start()
 
 	// enqueue some urls
@@ -58,9 +64,30 @@ func TestEnqueueURL(t *testing.T) {
 	// wait for results
 	recv := <-results
 
+	// Response
+	if recv.Status != "200 OK" {
+		t.Errorf("Expected Status to be '200 OK', got %v", recv.Status)
+	}
+	if recv.StatusCode != 200 {
+		t.Errorf("Expected StatusCode to be 200, got %v", recv.StatusCode)
+	}
+	if recv.URL.String() != ts.URL {
+		t.Errorf("Expected StatusCode to be %s, got %v", recv.URL)
+	}
+
+	if recv.Body != body {
+		t.Errorf("Expected body to be %s, got %v", body, recv.Body)
+	}
+	// Parsed item
 	if item, ok := recv.Item.(*post); ok {
+		if item.site != "amazon.com" {
+			t.Errorf("Expected site to be 'amazon.com', got %v", item.site)
+		}
 		if item.name != "Hello" {
 			t.Errorf("Expected name to be 'Hello', got %v", item.name)
+		}
+		if item.url != "amazon.com/something" {
+			t.Errorf("Expected url to be 'amazon.com/something', got %v", item.url)
 		}
 		if item.price != 2 {
 			t.Errorf("Expected price to be 2, got %v", item.price)
@@ -84,11 +111,8 @@ func TestCharsetConversion(t *testing.T) {
 	// start a spider
 	c := make(chan *Response)
 	spider := NewSpider("spider.com", c)
-	spider.ItemProcessor = func(doc *goquery.Document) Item {
-		post := &post{}
-		post.name = doc.Find("a").Text()
-		return post
-	}
+	spider.NewItem = newPost
+
 	spider.Start()
 
 	// enqueue some urls

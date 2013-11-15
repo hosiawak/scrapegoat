@@ -1,9 +1,8 @@
 package scrapegoat
 
 import (
-	"github.com/PuerkitoBio/goquery"
 	"net/http"
-	"time"
+	"strings"
 )
 
 type worker struct {
@@ -26,29 +25,21 @@ func (w *worker) start() {
 		for {
 			select {
 			case urlReq := <-w.spider.urlQueue:
-				before := time.Now()
-				req, err := http.NewRequest("GET", urlReq.url, nil)
+				resp, err := urlReq.send(w.client)
+
 				if err != nil {
 					panic(err)
 				}
 
-				resp, err := w.client.Do(req)
+				doc, err := NewDocumentFromReader(strings.NewReader(resp.Body))
 				if err != nil {
-					panic(err)
+					return
 				}
+				item := w.spider.NewItem()
+				item.Process(doc, resp)
+				resp.Item = item
 
-				reader := getReader(resp)
-
-				doc, err := goquery.NewDocumentFromReader(reader)
-				if err != nil {
-					panic(err)
-				}
-
-				w.spider.results <- &Response{Item: w.spider.ItemProcessor(doc),
-					Headers: resp.Header,
-					Body:    "", // FIXME
-					Time:    time.Since(before)}
-				resp.Body.Close() // needed to have keep alive
+				w.spider.results <- resp
 			case <-w.quit:
 				return
 			}
