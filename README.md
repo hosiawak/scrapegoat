@@ -20,12 +20,20 @@ func main() {
 	 // Create a struct to hold your parsed item
 	 type Product { website, name string, price float64 }
 
-	 // Create a channel on which you'll receive parsed results:
+	 // Create an initialization function for your item
+	 func NewProduct() Item {
+		 return &Product{website: "amazon.com"}
+	 }
+
+     // Create a channel on which you'll receive *sg.Response:
 	 results := make(chan *sg.Response)
 
 	 // Create a spider and pass the channel
 	 spider := sg.NewSpider("amazon.com", results)
 
+	 // Register the init function at the spider
+	 spider.NewItemFunc = NewProduct
+	 
 	 // Define the parsing function Process for your item
 	 func (p *Product) Process(doc *Document, resp *Response) Item {
 		 p.name = doc.Find("#btAsInTitle").Text()
@@ -33,20 +41,14 @@ func main() {
 		 return p
 	 }
 
-	 // Create an initialization function for your item
-	 func NewProduct() Item {
-		 return &Product{website: "amazon.com"}
-	 }
-	 // and register it at the spider
-	 spider.NewItem = NewProduct
-	 
 	 // Start the spider
 	 spider.Start()
 
 	 // Enqueue some URLs
 	 spider.EnqueueURL("http://www.amazon.com/gp/product/B00CTUKFNQ")
 	 spider.EnqueueURL("http://www.amazon.com/Apple-iPod-classic-Black-Generation/dp/B001F7AHOG")
-	 // Collect the result
+
+     // Collect the result
 	 // This blocks so you may want to do it in a goroutine
 	 res := <-results
 

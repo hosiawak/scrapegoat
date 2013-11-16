@@ -20,7 +20,7 @@ func debugf(format string, args ...interface{}) {
 }
 
 func readResponse(resp *http.Response) string {
-	reader := getReader(resp)
+	reader := charsetReader(resp)
 	r, err := ioutil.ReadAll(reader)
 	if err != nil {
 		panic(err)
@@ -28,6 +28,7 @@ func readResponse(resp *http.Response) string {
 	return string(r)
 }
 
+// Returns encoding name found in HTTP Content-Type header
 func getCharset(header http.Header) (string, error) {
 	char := header["Content-Type"][0]
 	idx := strings.Index(char, "charset")
@@ -37,7 +38,8 @@ func getCharset(header http.Header) (string, error) {
 	return "", errors.New("Charset header not found in " + char)
 }
 
-func getReader(resp *http.Response) io.Reader {
+// Wraps the reader in charset.Reader if charset header found in resp
+func charsetReader(resp *http.Response) io.Reader {
 	cs, err := getCharset(resp.Header)
 	if err != nil {
 		return resp.Body

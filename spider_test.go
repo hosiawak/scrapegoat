@@ -9,8 +9,8 @@ import (
 )
 
 type post struct {
-	site, name, url  string
-	price int
+	site, name, url string
+	price           int
 }
 
 func newPost() Item {
@@ -55,7 +55,7 @@ func TestResponse(t *testing.T) {
 	// start a spider
 	results := make(chan *Response)
 	spider := NewSpider("spider.com", results)
-	spider.NewItem = newPost
+	spider.NewItemFunc = newPost
 	spider.Start()
 
 	// enqueue some urls
@@ -75,9 +75,10 @@ func TestResponse(t *testing.T) {
 		t.Errorf("Expected StatusCode to be %s, got %v", recv.URL)
 	}
 
-	if recv.Body != body {
-		t.Errorf("Expected body to be %s, got %v", body, recv.Body)
+	if string(recv.Body) != body {
+		t.Errorf("Expected body to be %s, got %v", body, string(recv.Body))
 	}
+
 	// Parsed item
 	if item, ok := recv.Item.(*post); ok {
 		if item.site != "amazon.com" {
@@ -111,7 +112,7 @@ func TestCharsetConversion(t *testing.T) {
 	// start a spider
 	c := make(chan *Response)
 	spider := NewSpider("spider.com", c)
-	spider.NewItem = newPost
+	spider.NewItemFunc = newPost
 
 	spider.Start()
 

@@ -35,7 +35,7 @@ func (w *worker) start() {
 				if err != nil {
 					return
 				}
-				item := w.spider.NewItem()
+				item := w.spider.NewItemFunc()
 				item.Process(doc, resp)
 				resp.Item = item
 
