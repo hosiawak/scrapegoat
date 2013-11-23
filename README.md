@@ -9,57 +9,60 @@ Usage
 ==
 
 ```go
+package main
+
 import (
 	"fmt"
-	"strconv"
+
 	sg "github.com/hosiawak/scrapegoat"
 )
- 
+
+// Create a struct to hold your parsed item
+type Product struct {
+	website, name, description string
+}
+
+// Create an initialization function for your item
+func NewProduct() sg.Item {
+	return &Product{website: "amazon.com"}
+}
+
+// Define the parsing function Process for your item
+func (p *Product) Process(doc *sg.Document, resp *sg.Response, ctx interface{}) sg.Item {
+	p.name = doc.CSS("title").Text()
+	p.description = doc.CSS(".productDescriptionWrapper").Text()
+	return p
+}
+
 func main() {
 
-	 // Create a struct to hold your parsed item
-	 type Product { website, name string, price float64 }
+	// Create a channel on which you'll receive *sg.Response:
+	results := make(chan *sg.Response)
 
-	 // Create an initialization function for your item
-	 func NewProduct() Item {
-		 return &Product{website: "amazon.com"}
-	 }
+	// Create a spider and pass the channel
+	spider := sg.NewSpider("amazon.com", results)
 
-     // Create a channel on which you'll receive *sg.Response:
-	 results := make(chan *sg.Response)
+	// Register the init function at the spider
+	spider.NewItemFunc = NewProduct
 
-	 // Create a spider and pass the channel
-	 spider := sg.NewSpider("amazon.com", results)
+	// Start the spider
+	spider.Start()
 
-	 // Register the init function at the spider
-	 spider.NewItemFunc = NewProduct
-	 
-	 // Define the parsing function Process for your item
-	 func (p *Product) Process(doc *Document, resp *Response, ctx interface{}) Item {
-		 p.name = doc.CSS("#btAsInTitle").Text()
-		 p.price, _ = strconv.Atoi(doc.CSS("b.priceLarge.kitsunePrice").Text())
-		 return p
-	 }
+	// Enqueue some URLs
+	spider.EnqueueURL("http://www.amazon.com/Apple-iPod-classic-Black-Generation/dp/B001F7AHOG")
 
-	 // Start the spider
-	 spider.Start()
+	// Collect the result
+	// This blocks waiting for results so you may want to do it in a goroutine
+	res := <-results
 
-	 // Enqueue some URLs
-	 spider.EnqueueURL("http://www.amazon.com/gp/product/B00CTUKFNQ")
-	 spider.EnqueueURL("http://www.amazon.com/Apple-iPod-classic-Black-Generation/dp/B001F7AHOG")
+	// Need to type assert your struct because on the channel can hold any value (scrapegoat.Item is interface{})
+	if product, ok := res.Item.(*Product); ok {
+		fmt.Printf("Product Name: %s\nDescription: %s\n", product.name, product.description)
+	} else {
+		panic("Assertion failed")
+	}
 
-     // Collect the result
-	 // This blocks so you may want to do it in a goroutine
-	 res := <-results
-
-	 // Need to type assert your struct because on the channel can hold any value (scrapegoat.Item is interface{})
-	 if product, ok := res.Item.(*Product); ok {
-		   fmt.Printf("Product name is %s, price is %d, product.name, product.price)
-	 } else {
-		 panic("Assertion failed")
-	 }
-
-	 // to stop the spider
-	 spider.Stop()
+	// to stop the spider
+	spider.Stop()
 }
 ```
