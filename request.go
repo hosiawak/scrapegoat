@@ -11,6 +11,7 @@ import (
 // implemented yet).
 type Request struct {
 	url string // fetch this url
+	ctx interface{}
 }
 
 // sends the HTTP request, receives a response and encodes it using

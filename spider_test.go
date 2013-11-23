@@ -11,16 +11,20 @@ import (
 type post struct {
 	site, name, url string
 	price           int
+	value           string
 }
 
 func newPost() Item {
 	return &post{site: "amazon.com"}
 }
 
-func (p *post) Process(doc *Document, resp *Response) Item {
+func (p *post) Process(doc *Document, resp *Response, ctx interface{}) Item {
 	p.name = doc.CSS("a").Text()
 	p.url = "amazon.com/something"
 	p.price, _ = strconv.Atoi(doc.CSS("span.price").Text())
+	if ctx != nil {
+		p.value = ctx.(map[string]string)["key"]
+	}
 	return p
 }
 
@@ -101,6 +105,41 @@ func TestResponse(t *testing.T) {
 
 }
 
+func TestEnqueueURLContext(t *testing.T) {
+	// test server
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "")
+	}))
+	defer ts.Close()
+
+	// start a spider
+	results := make(chan *Response)
+	spider := NewSpider("spider.com", results)
+	spider.NewItemFunc = newPost
+
+	spider.Start()
+
+	// enqueue a URL with Context
+	ctx := make(map[string]string)
+	ctx["key"] = "value"
+
+	spider.EnqueueURLContext(ts.URL, ctx)
+
+	// wait for results
+	recv := <-results
+
+	// Parsed item
+	if item, ok := recv.Item.(*post); ok {
+		if item.value != "value" {
+			t.Errorf("Expected name to be 'value', got %v", item.value)
+		}
+	} else {
+		t.Error("Assertion failed")
+	}
+	// stop the spider
+	spider.Stop()
+
+}
 func TestCharsetConversion(t *testing.T) {
 	// test server
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

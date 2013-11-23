@@ -2,6 +2,7 @@ package scrapegoat
 
 import (
 	"github.com/PuerkitoBio/goquery"
+
 	"io"
 )
 

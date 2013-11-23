@@ -49,7 +49,13 @@ func (s *Spider) SetQueueSize(b int) {
 
 // EnqueueURL pushes the given URL onto the URL queue for spidering
 func (s *Spider) EnqueueURL(url string) {
-	req := &Request{url}
+	s.EnqueueURLContext(url, nil)
+}
+
+// EnqueueURLContext pushes the given URL and *Context onto the URL queue for
+// spidering
+func (s *Spider) EnqueueURLContext(url string, ctx interface{}) {
+	req := &Request{url, ctx}
 	s.urlQueue <- req
 }
 

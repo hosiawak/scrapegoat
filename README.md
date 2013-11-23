@@ -35,9 +35,9 @@ func main() {
 	 spider.NewItemFunc = NewProduct
 	 
 	 // Define the parsing function Process for your item
-	 func (p *Product) Process(doc *Document, resp *Response) Item {
-		 p.name = doc.Find("#btAsInTitle").Text()
-		 p.price, _ = strconv.Atoi(doc.Find("b.priceLarge.kitsunePrice").Text())
+	 func (p *Product) Process(doc *Document, resp *Response, ctx interface{}) Item {
+		 p.name = doc.CSS("#btAsInTitle").Text()
+		 p.price, _ = strconv.Atoi(doc.CSS("b.priceLarge.kitsunePrice").Text())
 		 return p
 	 }
 

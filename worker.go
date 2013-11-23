@@ -36,7 +36,7 @@ func (w *worker) start() {
 					return
 				}
 				item := w.spider.NewItemFunc()
-				item.Process(doc, resp)
+				item.Process(doc, resp, urlReq.ctx)
 				resp.Item = item
 
 				w.spider.results <- resp
