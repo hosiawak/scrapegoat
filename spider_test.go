@@ -18,12 +18,14 @@ func newPost() Item {
 	return &post{site: "amazon.com"}
 }
 
+type context map[string]string
+
 func (p *post) Process(doc *Document, resp *Response, ctx interface{}) Item {
 	p.name = doc.CSS("a").Text()
 	p.url = "amazon.com/something"
 	p.price, _ = strconv.Atoi(doc.CSS("span.price").Text())
 	if ctx != nil {
-		p.value = ctx.(map[string]string)["key"]
+		p.value = ctx.(context)["key"]
 	}
 	return p
 }
@@ -120,7 +122,7 @@ func TestEnqueueURLContext(t *testing.T) {
 	spider.Start()
 
 	// enqueue a URL with Context
-	ctx := make(map[string]string)
+	ctx := make(context)
 	ctx["key"] = "value"
 
 	spider.EnqueueURLContext(ts.URL, ctx)
