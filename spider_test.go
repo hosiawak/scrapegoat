@@ -2,6 +2,7 @@ package scrapegoat
 
 import (
 	"fmt"
+	"io/ioutil"
 
 	"github.com/PuerkitoBio/goquery"
 	"net/http"
@@ -69,6 +70,7 @@ func TestResponse(t *testing.T) {
 	// start a spider
 	results := make(chan *Response)
 	spider := NewSpider("spider.com", results)
+	spider.SetLogger(ioutil.Discard)
 	spider.NewItemFunc = newPost
 	spider.Start()
 
@@ -121,6 +123,7 @@ func TestEnqueueURLContext(t *testing.T) {
 	// start a spider
 	results := make(chan *Response)
 	spider := NewSpider("spider.com", results)
+	spider.SetLogger(ioutil.Discard)
 	spider.NewItemFunc = newPost
 
 	spider.Start()
