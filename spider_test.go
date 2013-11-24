@@ -2,32 +2,40 @@ package scrapegoat
 
 import (
 	"fmt"
+
+	"github.com/PuerkitoBio/goquery"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
 	"testing"
 )
 
-type post struct {
+type testPost struct {
 	site, name, url string
 	price           int
-	value           string
+	ctxValue        string
 }
 
 func newPost() Item {
-	return &post{site: "amazon.com"}
+	return &testPost{site: "amazon.com"}
 }
 
-type context map[string]string
+type postCtx struct {
+	value string
+}
 
-func (p *post) Process(doc *Document, resp *Response, ctx interface{}) Item {
-	p.name = doc.CSS("a").Text()
-	p.url = "amazon.com/something"
-	p.price, _ = strconv.Atoi(doc.CSS("span.price").Text())
-	if ctx != nil {
-		p.value = ctx.(context)["key"]
+func (p *testPost) Parse(resp *Response, ctx Context) (Item, error) {
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	if err != nil {
+		return nil, err
 	}
-	return p
+	p.name = doc.Find("a").Text()
+	p.url = "amazon.com/something"
+	p.price, _ = strconv.Atoi(doc.Find("span.price").Text())
+	if ctx != nil {
+		p.ctxValue = ctx.(*postCtx).value
+	}
+	return p, nil
 }
 
 func TestNewSpider(t *testing.T) {
@@ -81,12 +89,8 @@ func TestResponse(t *testing.T) {
 		t.Errorf("Expected StatusCode to be %s, got %v", recv.URL)
 	}
 
-	if string(recv.Body) != body {
-		t.Errorf("Expected body to be %s, got %v", body, string(recv.Body))
-	}
-
 	// Parsed item
-	if item, ok := recv.Item.(*post); ok {
+	if item, ok := recv.Item.(*testPost); ok {
 		if item.site != "amazon.com" {
 			t.Errorf("Expected site to be 'amazon.com', got %v", item.site)
 		}
@@ -122,8 +126,7 @@ func TestEnqueueURLContext(t *testing.T) {
 	spider.Start()
 
 	// enqueue a URL with Context
-	ctx := make(context)
-	ctx["key"] = "value"
+	ctx := &postCtx{"value"}
 
 	spider.EnqueueURLContext(ts.URL, ctx)
 
@@ -131,16 +134,15 @@ func TestEnqueueURLContext(t *testing.T) {
 	recv := <-results
 
 	// Parsed item
-	if item, ok := recv.Item.(*post); ok {
-		if item.value != "value" {
-			t.Errorf("Expected name to be 'value', got %v", item.value)
+	if item, ok := recv.Item.(*testPost); ok {
+		if item.ctxValue != "value" {
+			t.Errorf("Expected name to be 'value', got %v", item.ctxValue)
 		}
 	} else {
 		t.Error("Assertion failed")
 	}
 	// stop the spider
 	spider.Stop()
-
 }
 func TestCharsetConversion(t *testing.T) {
 	// test server
@@ -163,7 +165,7 @@ func TestCharsetConversion(t *testing.T) {
 	// wait for results
 	recv := <-c
 
-	if recv.Item.(*post).name != "ĄŁŚŹŻ" {
+	if recv.Item.(*testPost).name != "ĄŁŚŹŻ" {
 		t.Errorf("Expected to receive 'ĄŁ', got %v", recv)
 	}
 

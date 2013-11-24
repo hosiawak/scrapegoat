@@ -1,21 +1,18 @@
 package scrapegoat
 
-import (
-	"net/http"
-	"strings"
-)
+import "net/http"
 
 type worker struct {
 	spider *Spider
 	client *http.Client
-	quit   chan bool
+	quit   chan struct{}
 }
 
 func (s *Spider) newWorker() *worker {
 	worker := &worker{}
 	worker.spider = s
 	worker.client = &http.Client{}
-	worker.quit = make(chan bool, 1)
+	worker.quit = make(chan struct{}, 1)
 	return worker
 }
 
@@ -28,15 +25,13 @@ func (w *worker) start() {
 				resp, err := urlReq.send(w.client)
 
 				if err != nil {
-					panic(err)
+					// log the error
+					// and continue
+					break
 				}
 
-				doc, err := NewDocumentFromReader(strings.NewReader(resp.Body))
-				if err != nil {
-					return
-				}
 				item := w.spider.NewItemFunc()
-				item.Process(doc, resp, urlReq.ctx)
+				item.Parse(resp, urlReq.ctx)
 				resp.Item = item
 
 				w.spider.results <- resp
@@ -49,5 +44,5 @@ func (w *worker) start() {
 }
 
 func (w *worker) stop() {
-	w.quit <- true
+	w.quit <- struct{}{}
 }

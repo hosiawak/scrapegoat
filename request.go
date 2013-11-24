@@ -11,7 +11,7 @@ import (
 // implemented yet).
 type Request struct {
 	url string // fetch this url
-	ctx interface{}
+	ctx Context
 }
 
 // sends the HTTP request, receives a response and encodes it using
@@ -31,7 +31,7 @@ func (r *Request) send(c *http.Client) (*Response, error) {
 	}
 	reader := charsetReader(resp)
 	var body bytes.Buffer
-	_, _ = body.ReadFrom(reader)
+	_, err = body.ReadFrom(reader)
 
 	if err != nil {
 		return nil, err
@@ -42,7 +42,7 @@ func (r *Request) send(c *http.Client) (*Response, error) {
 		StatusCode: resp.StatusCode,
 		URL:        resp.Request.URL,
 		Headers:    resp.Header,
-		Body:       body.String(),
+		Body:       &body,
 		Elapsed:    time.Since(before)}
 	return response, nil
 }

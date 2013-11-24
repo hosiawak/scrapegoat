@@ -54,7 +54,7 @@ func (s *Spider) EnqueueURL(url string) {
 
 // EnqueueURLContext pushes the given URL and *Context onto the URL queue for
 // spidering
-func (s *Spider) EnqueueURLContext(url string, ctx interface{}) {
+func (s *Spider) EnqueueURLContext(url string, ctx Context) {
 	req := &Request{url, ctx}
 	s.urlQueue <- req
 }

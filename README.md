@@ -15,6 +15,7 @@ import (
 	"fmt"
 
 	sg "github.com/hosiawak/scrapegoat"
+	"github.com/PuerkitoBio/goquery"
 )
 
 // Create a struct to hold your parsed item
@@ -27,11 +28,17 @@ func NewProduct() sg.Item {
 	return &Product{website: "amazon.com"}
 }
 
-// Define the parsing function Process for your item
-func (p *Product) Process(doc *sg.Document, resp *sg.Response, ctx interface{}) sg.Item {
-	p.name = doc.CSS("title").Text()
-	p.description = doc.CSS(".productDescriptionWrapper").Text()
-	return p
+// Define the parsing function Parse for your item
+// resp.Body is io.Reader you can use to parse the page
+// For example you can use goquery
+func (p *Product) Parse(resp *sg.Response, ctx sg.Context) (sg.Item, error) {
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	p.name = doc.Find("title").Text()
+	p.description = doc.Find(".productDescriptionWrapper").Text()
+	return p, nil
 }
 
 func main() {
